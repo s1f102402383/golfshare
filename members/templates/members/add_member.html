@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>addmember</title>
+</head>
+<body>
+    <h1>こんにちは！</h1>
+    <p>HTMLコードです。</p>
+    <form action="{% url 'add_member' %}" method="POST"> 
+        {% csrf_token %}
+        
+        <div class="name1">
+        <label for="name">名前を入力:</label>
+        <input type="text" name="name" required/>
+        </div>
+        
+        <div class="nearest_station">
+            <label for="nearest_station">最寄り駅を入力：</label>
+            <input type="text" name="nearest_station" required/>
+        </div>
+
+
+        <div class="has_car">
+            <label for="has_car">車をもっていますか：</label>
+            <input type="checkbox" name="has_car"  value="true" required/>
+        </div>
+
+        
+        <div class="car_capacity">
+            <label for="car_capacity">車は何人乗り：</label>
+            <input type="text" name="car_capacity" required/>
+        </div>
+
+        <button type="submit">登録</button>
+
+ </form>
+</body>
+</html>

@@ -13,11 +13,11 @@ def add_member(request):
        Member.objects.create(
            name=request.POST['name'],
            nearest_station=request.POST['nearest_station'],
-           has_car=request.POST['has_car'],
+           has_car = request.POST.get('has_car') == 'true',
            car_capacity=request.POST['car_capacity']
        )
        return redirect('index')
 
     else:
-        return render(request,'add_member.html')
+        return render(request,'members/add_member.html')
 

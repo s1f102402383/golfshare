@@ -7,9 +7,25 @@
 </head>
 <body>
     <h1>こんにちは！</h1>
-    <p>初めてのHTMLコードです。</p>
-    {% for member in members %}
-    {{ member.name }}
-{% endfor %}
+    <a href="{% url 'add_member' %}">部員を追加する</a>
+    <table>
+        <tr>
+             <th scope="col">名前</th>
+            <th scope="col">最寄り駅</th>
+            <th scope="col">車持ってるかどうか</th>
+             <th scope="col">車は何人乗り</th>
+        </tr>
+
+        {% for member in members %}
+        <tr>
+            <td>{{ member.name }}</td>
+            <td> {{ member.nearest_station }}</td>
+            <td>{{ member.has_car }}</td>
+            <td>{{ member.car_capacity }}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+    
 </body>
 </html>
