@@ -26,6 +26,16 @@
         {% endfor %}
 
     </table>
-    
+
+    <br>
+    <br>
+    {% for round in rounds %}
+    {{ round.day }}
+    {{ round.gather_station }}
+    {{ round.gather_time }}
+   {% for member in round.members.all %}
+    {{ member.name }}
+    {% endfor %}
+     {% endfor %}
 </body>
 </html>
