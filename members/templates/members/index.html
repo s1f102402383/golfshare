@@ -36,6 +36,7 @@
    {% for member in round.members.all %}
     {{ member.name }}
     {% endfor %}
+    <a href="{% url 'carshare_result' round.id %}">配車を計算する</a>
      {% endfor %}
 </body>
 </html>

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配車表示</title>
+</head>
+<body>
+    <h1>こんにちは！</h1>
+
+    {{ round.day }}のラウンド
+
+{% for driver,passengers in assignments.items %}
+    {{ driver.name }}の車
+    {% for passenger in passengers %}
+        {{ passenger.name }}
+    {% endfor %}
+{% endfor %}
+</body>
+</html>
