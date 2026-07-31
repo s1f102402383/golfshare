@@ -38,5 +38,10 @@
     {% endfor %}
     <a href="{% url 'carshare_result' round.id %}">配車を計算する</a>
      {% endfor %}
+
+    <form method="POST" action="{% url 'logout' %}">
+    {% csrf_token %}
+    <button type="submit">ログアウト</button>
+</form>
 </body>
 </html>

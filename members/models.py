@@ -1,8 +1,12 @@
 from django.db import models
+from django.contrib.auth.models import User
+
 
 # Create your models here.
 
 class Member(models.Model):
+    user=models.ForeignKey(User,on_delete=models.CASCADE)
+    #on_delete=models.CASCADEの意味： Userが削除されたら、そのUserの部員データも一緒に削除する。
     name=models.CharField(max_length=100)
     nearest_station=models.CharField(max_length=100)
     has_car=models.BooleanField(default=False)
@@ -10,9 +14,13 @@ class Member(models.Model):
 
 
 class Round(models.Model):
+    user=models.ForeignKey(User,on_delete=models.CASCADE)
     day=models.DateField()
     #このmemberはラウンドに参加する人を表す
     members=models.ManyToManyField(Member)
     gather_station=models.CharField(max_length=100)
     gather_time=models.TimeField()
+
+
+
 

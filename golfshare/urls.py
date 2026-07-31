@@ -20,5 +20,6 @@ from django.urls import path ,include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('members/',include('members.urls'))#/members/以降のURLはmembersアプリのurls.pyに任せる
+    path('members/',include('members.urls')),#/members/以降のURLはmembersアプリのurls.pyに任せる
+    path('accounts/', include('django.contrib.auth.urls')),#django.contrib.auth.urlsはDjangoが最初から持ってるログイン・ログアウトのURL
 ]

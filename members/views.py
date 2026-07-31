@@ -1,16 +1,20 @@
 from django.shortcuts import render,redirect
 from .models import Member,Round
+
+from django.contrib.auth.decorators import login_required
 # Create your views here.
 
+@login_required
 def index(request):
-    contents=Member.objects.all()
-    rounds=Round.objects.all()
+    contents = Member.objects.filter(user=request.user)
+    rounds = Round.objects.filter(user=request.user)
     return render(request,'members/index.html',{'members': contents,'rounds':rounds})
 
-
+@login_required
 def add_member(request):
     if request.method=='POST':
        Member.objects.create(
+           user=request.user,
            name=request.POST['name'],
            nearest_station=request.POST['nearest_station'],
            has_car = request.POST.get('has_car') == 'true',
@@ -21,10 +25,11 @@ def add_member(request):
     else:
         return render(request,'members/add_member.html')
 
-
+@login_required
 def add_round(request):
     if request.method=='POST':
       round=Round.objects.create(
+          user=request.user,
           day=request.POST['day'],
           
           gather_station=request.POST['gather_station'],
@@ -35,12 +40,12 @@ def add_round(request):
       return redirect('index')
 
     else:
-        members=Member.objects.all()
+        members = Member.objects.filter(user=request.user)
         return render(request,'members/add_round.html',{'members':members})
 
 
 
-
+@login_required
 def calculate_carshare(request, round_id):
     #ラウンドを取得
     round=Round.objects.get(id=round_id)
