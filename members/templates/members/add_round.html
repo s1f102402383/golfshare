@@ -1,35 +1,30 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ラウンド情報</title>
-</head>
-<body>
-    <h1>こんにちは！</h1>
-    <form action="{% url 'add_round' %}" method="POST">
-        {% csrf_token %}
-        <div class="day">
-            <label for="day">ラウンド日:</label>
-            <input type="date" id="day" name="day">
-        </div>
+{% extends 'members/base.html' %}
+{% block content %}
 
-        <div class="member">
+<p class="page-title">おでかけを作成</p>
+<p class="page-sub">日付・参加メンバー・集合場所を設定します</p>
+
+<div class="card">
+    <form method="POST" action="{% url 'add_round' %}">
+        {% csrf_token %}
+        <label for="day">日付</label>
+        <input type="date" name="day" required>
+
+        <label>参加メンバー</label>
+        <div class="checkbox-row">
             {% for member in members %}
-            <input type="checkbox" name="members" value="{{ member.id }}">{{ member.name }}
+            <label><input type="checkbox" name="members" value="{{ member.id }}"> {{ member.name }}</label>
             {% endfor %}
         </div>
 
-        <div>
-            <label for="gather_station">集合する駅:</label>
-            <input type="text" id="gather_station" name="gather_station">
-        </div>
+        <label for="gather_station">集合する駅</label>
+        <input type="text" name="gather_station" required>
 
-        <div>
-            <label for="gather_time">集合時間:</label>
-            <input type="text" name="gather_time" id="gather_time">
-        </div>
-        <button type="submit">ラウンド作成</button>
+        <label for="gather_time">集合時間</label>
+        <input type="time" name="gather_time" required>
+
+        <button type="submit" class="btn">作成する</button>
     </form>
-</body>
-</html>
+</div>
+
+{% endblock %}

@@ -1,20 +1,22 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>配車表示</title>
-</head>
-<body>
-    <h1>こんにちは！</h1>
+{% extends 'members/base.html' %}
+{% block content %}
 
-    {{ round.day }}のラウンド
+<p class="page-title">配車プラン</p>
+<p class="page-sub">{{ round.day }}　集合駅 {{ round.gather_station }}　{{ round.gather_time }}</p>
 
-{% for driver,passengers in assignments.items %}
-    {{ driver.name }}の車
+{% for driver, passengers in assignments.items %}
+<div class="card">
+    <div class="card-head">
+        <h3>{{ driver.name }}さんの車</h3>
+        <span class="badge badge-car">{{ driver.nearest_station }}</span>
+    </div>
+    <p style="font-size:13px; color:#6b7785; margin-bottom:10px;">同乗するメンバー</p>
     {% for passenger in passengers %}
-        {{ passenger.name }}
+        <span class="badge">{{ passenger.name }}</span>
+    {% empty %}
+        <p class="empty">同乗者なし</p>
     {% endfor %}
+</div>
 {% endfor %}
-</body>
-</html>
+
+{% endblock %}

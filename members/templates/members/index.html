@@ -1,47 +1,58 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ページのタイトル</title>
-</head>
-<body>
-    <h1>こんにちは！</h1>
-    <a href="{% url 'add_member' %}">部員を追加する</a>
+{% extends 'members/base.html' %}
+{% block content %}
+
+<p class="page-title">メンバー一覧</p>
+<p class="page-sub">登録されているメンバーと車の情報</p>
+
+<div class="card">
     <table>
         <tr>
-             <th scope="col">名前</th>
-            <th scope="col">最寄り駅</th>
-            <th scope="col">車持ってるかどうか</th>
-             <th scope="col">車は何人乗り</th>
+            <th>名前</th>
+            <th>最寄り駅</th>
+            <th>車</th>
+            <th>乗車可能人数</th>
         </tr>
-
         {% for member in members %}
         <tr>
             <td>{{ member.name }}</td>
-            <td> {{ member.nearest_station }}</td>
-            <td>{{ member.has_car }}</td>
+            <td>{{ member.nearest_station }}</td>
+            <td>
+                {% if member.has_car %}<span class="badge badge-car">あり</span>{% else %}—{% endif %}
+            </td>
             <td>{{ member.car_capacity }}</td>
         </tr>
+        {% empty %}
+        <tr><td colspan="4" class="empty">まだメンバーが登録されていません</td></tr>
         {% endfor %}
-
     </table>
+</div>
 
-    <br>
-    <br>
-    {% for round in rounds %}
-    {{ round.day }}
-    {{ round.gather_station }}
-    {{ round.gather_time }}
-   {% for member in round.members.all %}
-    {{ member.name }}
-    {% endfor %}
-    <a href="{% url 'carshare_result' round.id %}">配車を計算する</a>
-     {% endfor %}
+<p class="page-title" style="margin-top:32px;">おでかけ一覧</p>
+<p class="page-sub">作成済みの予定と配車プラン</p>
 
-    <form method="POST" action="{% url 'logout' %}">
+{% for round in rounds %}
+<div class="card">
+    <div class="card-head">
+        <h3>{{ round.day }}</h3>
+        <a href="{% url 'carshare_result' round.id %}" class="btn btn-accent">配車を計算</a>
+    </div>
+    <div class="meta">
+        <span>集合駅 <strong>{{ round.gather_station }}</strong></span>
+        <span>集合時間 <strong>{{ round.gather_time }}</strong></span>
+    </div>
+    <div>
+        {% for member in round.members.all %}
+            <span class="badge">{{ member.name }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% empty %}
+<div class="card"><p class="empty">まだ予定が作成されていません</p></div>
+{% endfor %}
+
+<form method="POST" action="{% url 'logout' %}" style="margin-top:28px;">
     {% csrf_token %}
-    <button type="submit">ログアウト</button>
+    <button type="submit" class="btn btn-ghost">ログアウト</button>
 </form>
-</body>
-</html>
+
+{% endblock %}

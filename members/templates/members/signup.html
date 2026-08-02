@@ -1,16 +1,13 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>アカウント作成</title>
-</head>
-<body>
-    <h1>アカウントを作成します</h1>
-   <form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">サインアップ</button>
-</form>
-</body>
-</html>
+{% extends 'members/base.html' %}
+{% block content %}
+
+<div class="card" style="max-width:400px; margin:40px auto;">
+    <p class="page-title" style="text-align:center;">アカウント作成</p>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn" style="width:100%;">登録する</button>
+    </form>
+</div>
+
+{% endblock %}

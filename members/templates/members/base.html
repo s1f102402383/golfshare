@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>配車プラン作成</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'members/style.css' %}">
+</head>
+<body>
+    <div class="header">
+        <a href="{% url 'index' %}" class="logo">配車プランナー</a>
+        <nav>
+            <a href="{% url 'add_member' %}">メンバー登録</a>
+            <a href="{% url 'add_round' %}">おでかけ作成</a>
+        </nav>
+    </div>
+    <div class="container">
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>

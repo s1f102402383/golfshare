@@ -1,17 +1,16 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ページのタイトル</title>
-</head>
-<body>
-    <h1>こんにちは！</h1>
-   <form method="POST">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">ログイン</button>
-</form>
-<a href="{% url 'signup' %}">新規登録はこちら</a>
-</body>
-</html>
+{% extends 'members/base.html' %}
+{% block content %}
+
+<div class="card" style="max-width:400px; margin:40px auto;">
+    <p class="page-title" style="text-align:center;">ログイン</p>
+    <form method="POST">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn" style="width:100%;">ログイン</button>
+    </form>
+    <p style="text-align:center; margin-top:16px; font-size:13px;">
+        <a href="{% url 'signup' %}" style="color:#0b3d67;">新規登録はこちら</a>
+    </p>
+</div>
+
+{% endblock %}
