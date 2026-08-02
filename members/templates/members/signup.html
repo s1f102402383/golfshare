@@ -3,15 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ページのタイトル</title>
+    <title>アカウント作成</title>
 </head>
 <body>
-    <h1>こんにちは！</h1>
+    <h1>アカウントを作成します</h1>
    <form method="POST">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">ログイン</button>
+    <button type="submit">サインアップ</button>
 </form>
-<a href="{% url 'signup' %}">新規登録はこちら</a>
 </body>
 </html>

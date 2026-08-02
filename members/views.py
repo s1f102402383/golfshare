@@ -1,6 +1,8 @@
 from django.shortcuts import render,redirect
 from .models import Member,Round
 
+from django.contrib.auth.forms import UserCreationForm
+
 from django.contrib.auth.decorators import login_required
 # Create your views here.
 
@@ -91,3 +93,14 @@ def calculate_carshare(request, round_id):
     return render(request,'members/result.html',{'assignments':assignments,'round':round})
 
     
+def signup(request):
+    if request.method=='POST':
+        form =UserCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('login')
+
+    else:
+        form=UserCreationForm()
+
+    return render(request,'members/signup.html',{'form':form})
