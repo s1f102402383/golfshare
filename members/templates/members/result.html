@@ -11,8 +11,8 @@
         <span class="badge badge-car">{{ driver.nearest_station }}</span>
     </div>
     <p style="font-size:13px; color:#6b7785; margin-bottom:10px;">同乗するメンバー</p>
-    {% for passenger in passengers %}
-        <span class="badge">{{ passenger.name }}</span>
+    {% for passenger,minutes in passengers %}
+        <span class="badge">{{ passenger.name }} {{ minutes }}分</span>
     {% empty %}
         <p class="empty">同乗者なし</p>
     {% endfor %}

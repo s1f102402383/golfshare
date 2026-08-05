@@ -5,7 +5,7 @@
 <p class="page-sub">名前・最寄り駅・車の有無を入力してください</p>
 
 <div class="card">
-    <form method="POST">
+    <form method="POST" action="{% url 'add_member' %}">
         {% csrf_token %}
         <label for="name">名前</label>
         <input type="text" name="name" required>

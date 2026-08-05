@@ -22,5 +22,19 @@ class Round(models.Model):
     gather_time=models.TimeField()
 
 
+#同じ駅の使いまわしを防ぐキャッシュ
+class StationCache(models.Model):
+    station_name = models.CharField(max_length=100, unique=True)
+    station_id = models.CharField(max_length=20)
+
+
+class TravelTimeCache(models.Model):
+    start_id = models.CharField(max_length=20)
+    goal_id = models.CharField(max_length=20)
+    minutes = models.IntegerField()
+
+    class Meta:
+        unique_together = ('start_id', 'goal_id')
+
 
 

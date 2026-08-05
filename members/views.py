@@ -3,6 +3,12 @@ from .models import Member,Round
 
 from django.contrib.auth.forms import UserCreationForm
 
+from .navitime import get_station_id_cached, get_travel_time_cached
+
+class SignupForm(UserCreationForm):
+    class Meta(UserCreationForm.Meta):
+        labels = {'username': 'ユーザー名'}
+
 from django.contrib.auth.decorators import login_required
 # Create your views here.
 
@@ -57,16 +63,28 @@ def calculate_carshare(request, round_id):
     drivers=[m for m in round.members.all() if m.has_car]
     passengers=[m for m in round.members.all() if not m.has_car]
 
-    #仮の所要時間
-    def get_travel_time(from_station,to_station):
-        return 30
+  
+
+   #APIに渡す出発時刻の形式を組み立てる
+    start_time = f"{round.day}T{round.gather_time}"
 
     #各乗客（passenger）から運転手までの所要時間をtraveltimeに入れる。
     traveltime=[]
     for passenger in passengers:
         for driver in drivers:
-            tm=get_travel_time(passenger.nearest_station,driver.nearest_station)
-            traveltime.append((tm,passenger,driver))
+            passenger_id = get_station_id_cached(passenger.nearest_station)
+            driver_id = get_station_id_cached(driver.nearest_station)
+
+            if passenger_id and driver_id:
+                tm = get_travel_time_cached(passenger_id, driver_id, start_time)
+            else:
+                tm = None
+
+            #駅が見つからない、経路がない場合は大きい値にして後回しにする
+            if tm is None:
+                tm = 999
+
+            traveltime.append((tm, passenger, driver))
 
     #ドライバーごとに乗客を割り当て
     traveltime.sort(key=lambda x: x[0])
@@ -86,7 +104,7 @@ def calculate_carshare(request, round_id):
         if passenger in assigned:
             continue #割り当て済みならスキップ
         if remaining[driver]>0:
-            assignments[driver].append(passenger)
+            assignments[driver].append((passenger,tm))
             remaining[driver]-=1
             assigned.add(passenger)
 
@@ -94,13 +112,11 @@ def calculate_carshare(request, round_id):
 
     
 def signup(request):
-    if request.method=='POST':
-        form =UserCreationForm(request.POST)
+    if request.method == 'POST':
+        form = SignupForm(request.POST)
         if form.is_valid():
             form.save()
             return redirect('login')
-
     else:
-        form=UserCreationForm()
-
-    return render(request,'members/signup.html',{'form':form})
+        form = SignupForm()
+    return render(request, 'members/signup.html', {'form': form})
