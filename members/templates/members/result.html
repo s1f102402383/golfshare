@@ -2,7 +2,11 @@
 {% block content %}
 
 <p class="page-title">配車プラン</p>
-<p class="page-sub">{{ round.day }}　集合駅 {{ round.gather_station }}　{{ round.gather_time }}</p>
+<p class="page-sub">{{ round.day }}</p>
+
+<div class="meta">
+    <span>目的地 <strong>{{ round.destination }}</strong></span>
+</div>
 
 {% for driver, passengers in assignments.items %}
 <div class="card">

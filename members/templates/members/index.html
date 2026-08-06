@@ -44,8 +44,7 @@
         <a href="{% url 'delete_round' round.id %}" class="btn btn-ghost">削除</a>
     </div>
     <div class="meta">
-        <span>集合駅 <strong>{{ round.gather_station }}</strong></span>
-        <span>集合時間 <strong>{{ round.gather_time }}</strong></span>
+        <span>目的地 <strong>{{ round.destination }}</strong></span>
     </div>
     <div>
         {% for member in round.members.all %}

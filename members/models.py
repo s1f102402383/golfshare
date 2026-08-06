@@ -18,8 +18,12 @@ class Round(models.Model):
     day=models.DateField()
     #このmemberはラウンドに参加する人を表す
     members=models.ManyToManyField(Member)
-    gather_station=models.CharField(max_length=100)
-    gather_time=models.TimeField()
+    destination=models.CharField(max_length=100)
+
+class DriverPlan(models.Model):
+    round=models.ForeignKey(Round,on_delete=models.CASCADE)
+    driver=models.ForeignKey(Member,on_delete=models.CASCADE)
+    meet_time=models.TimeField()
 
 
 #同じ駅の使いまわしを防ぐキャッシュ

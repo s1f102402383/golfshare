@@ -2,13 +2,16 @@
 {% block content %}
 
 <p class="page-title">おでかけを作成</p>
-<p class="page-sub">日付・参加メンバー・集合場所を設定します</p>
+<p class="page-sub">日付・参加メンバー・運転手ごとの集合時刻を設定します</p>
 
 <div class="card">
     <form method="POST" action="{% url 'add_round' %}">
         {% csrf_token %}
         <label for="day">日付</label>
         <input type="date" name="day" required>
+
+        <label for="destination">目的地</label>
+        <input type="text" name="destination" required>
 
         <label>参加メンバー</label>
         <div class="checkbox-row">
@@ -17,11 +20,14 @@
             {% endfor %}
         </div>
 
-        <label for="gather_station">集合する駅</label>
-        <input type="text" name="gather_station" required>
-
-        <label for="gather_time">集合時間</label>
-        <input type="time" name="gather_time" required>
+        <label>運転手ごとの集合時刻</label>
+        <p class="page-sub">車を出す人だけ入力してください</p>
+        {% for member in members %}
+            {% if member.has_car %}
+            <label for="meet_time_{{ member.id }}">{{ member.name }}（{{ member.nearest_station }}）</label>
+            <input type="time" name="meet_time_{{ member.id }}">
+            {% endif %}
+        {% endfor %}
 
         <button type="submit" class="btn">作成する</button>
     </form>

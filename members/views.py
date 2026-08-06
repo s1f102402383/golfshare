@@ -4,7 +4,7 @@ from .models import Member,Round
 from django.contrib.auth.forms import UserCreationForm
 
 from .navitime import get_station_id_cached, get_travel_time_cached
-
+from .models import Member, Round, DriverPlan
 class SignupForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         labels = {'username': 'ユーザー名'}
@@ -35,21 +35,31 @@ def add_member(request):
 
 @login_required
 def add_round(request):
-    if request.method=='POST':
-      round=Round.objects.create(
-          user=request.user,
-          day=request.POST['day'],
-          
-          gather_station=request.POST['gather_station'],
-          gather_time=request.POST['gather_time']
-      )
-      ##いったん保存してから別途追加
-      round.members.set(request.POST.getlist('members'))
-      return redirect('index')
+    if request.method == 'POST':
+        round = Round.objects.create(
+            user=request.user,
+            day=request.POST['day'],
+            destination=request.POST['destination'],
+        )
+        member_ids = request.POST.getlist('members')
+        round.members.set(member_ids)
 
+        # 参加者のうち車を出す人だけDriverPlanを作る
+        for member in round.members.all():
+            if member.has_car:
+                meet_time = request.POST.get(f'meet_time_{member.id}')
+                if meet_time:
+                        DriverPlan.objects.create(
+                        round=round,
+                        driver=member,
+                        meet_time=meet_time,
+                    )
+        return redirect('index')
     else:
         members = Member.objects.filter(user=request.user)
-        return render(request,'members/add_round.html',{'members':members})
+        return render(request, 'members/add_round.html', {'members': members})
+
+
 
 
 
@@ -60,18 +70,23 @@ def calculate_carshare(request, round_id):
 
     #ドライバーと乗客を分ける
 
-    drivers=[m for m in round.members.all() if m.has_car]
-    passengers=[m for m in round.members.all() if not m.has_car]
+    drivers = [m for m in round.members.all() if m.has_car]
+    passengers = [m for m in round.members.all() if not m.has_car]
 
-  
+    # 運転手ごとの集合時刻を辞書にしておく
+    meet_times = {}
+    for plan in DriverPlan.objects.filter(round=round):
+        meet_times[plan.driver.id] = plan.meet_time
 
-   #APIに渡す出発時刻の形式を組み立てる
-    start_time = f"{round.day}T{round.gather_time}"
-
-    #各乗客（passenger）から運転手までの所要時間をtraveltimeに入れる。
-    traveltime=[]
+    traveltime = []
     for passenger in passengers:
         for driver in drivers:
+            meet_time = meet_times.get(driver.id)
+            if not meet_time:
+                continue
+
+            start_time = f"{round.day}T{meet_time}"
+
             passenger_id = get_station_id_cached(passenger.nearest_station)
             driver_id = get_station_id_cached(driver.nearest_station)
 
@@ -80,11 +95,11 @@ def calculate_carshare(request, round_id):
             else:
                 tm = None
 
-            #駅が見つからない、経路がない場合は大きい値にして後回しにする
             if tm is None:
                 tm = 999
 
             traveltime.append((tm, passenger, driver))
+    
 
     #ドライバーごとに乗客を割り当て
     traveltime.sort(key=lambda x: x[0])
