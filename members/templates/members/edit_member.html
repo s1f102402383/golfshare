@@ -1,0 +1,29 @@
+{% extends 'members/base.html' %}
+{% block content %}
+
+<p class="page-title">メンバーを編集</p>
+
+<div class="card">
+    <form method="POST">
+        {% csrf_token %}
+        <label for="name">名前</label>
+        <input type="text" name="name" value="{{ member.name }}" required>
+
+        <label for="nearest_station">最寄り駅</label>
+        <input type="text" name="nearest_station" value="{{ member.nearest_station }}" required>
+
+        <label>車の有無</label>
+        <div class="checkbox-row">
+            <label>
+                <input type="checkbox" name="has_car" value="true" {% if member.has_car %}checked{% endif %}> 車を出せる
+            </label>
+        </div>
+
+        <label for="car_capacity">乗車可能人数</label>
+        <input type="text" name="car_capacity" value="{{ member.car_capacity }}">
+
+        <button type="submit" class="btn">更新する</button>
+    </form>
+</div>
+
+{% endblock %}

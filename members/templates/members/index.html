@@ -11,7 +11,9 @@
             <th>最寄り駅</th>
             <th>車</th>
             <th>乗車可能人数</th>
+            <th></th>
         </tr>
+        
         {% for member in members %}
         <tr>
             <td>{{ member.name }}</td>
@@ -20,9 +22,13 @@
                 {% if member.has_car %}<span class="badge badge-car">あり</span>{% else %}—{% endif %}
             </td>
             <td>{{ member.car_capacity }}</td>
+             <td>
+                <a href="{% url 'edit_member' member.id %}">編集</a>
+                <a href="{% url 'delete_member' member.id %}">削除</a>
+            </td>
         </tr>
         {% empty %}
-        <tr><td colspan="4" class="empty">まだメンバーが登録されていません</td></tr>
+        <tr><td colspan="5" class="empty">まだメンバーが登録されていません</td></tr>
         {% endfor %}
     </table>
 </div>
@@ -35,6 +41,7 @@
     <div class="card-head">
         <h3>{{ round.day }}</h3>
         <a href="{% url 'carshare_result' round.id %}" class="btn btn-accent">配車を計算</a>
+        <a href="{% url 'delete_round' round.id %}" class="btn btn-ghost">削除</a>
     </div>
     <div class="meta">
         <span>集合駅 <strong>{{ round.gather_station }}</strong></span>

@@ -120,3 +120,32 @@ def signup(request):
     else:
         form = SignupForm()
     return render(request, 'members/signup.html', {'form': form})
+
+
+@login_required
+def delete_member(request, member_id):
+    member = Member.objects.get(id=member_id, user=request.user)
+    member.delete()
+    return redirect('index')
+
+
+@login_required
+def edit_member(request,member_id):
+    member=Member.objects.get(id=member_id,user=request.user)
+    if request.method=='POST':
+        member.name=request.POST['name']
+        member.nearest_station = request.POST['nearest_station']
+        member.has_car = request.POST.get('has_car') == 'true'
+        member.car_capacity = request.POST['car_capacity'] or 0
+        member.save()
+        return redirect('index')
+
+    else:
+        return render(request,'members/edit_member.html', {'member': member})
+
+
+@login_required
+def delete_round(request, round_id):
+    round = Round.objects.get(id=round_id, user=request.user)
+    round.delete()
+    return redirect('index')
