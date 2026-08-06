@@ -85,20 +85,21 @@ def calculate_carshare(request, round_id):
             if not meet_time:
                 continue
 
-            start_time = f"{round.day}T{meet_time}"
+            goal_time = f"{round.day}T{meet_time}"
 
             passenger_id = get_station_id_cached(passenger.nearest_station)
             driver_id = get_station_id_cached(driver.nearest_station)
 
             if passenger_id and driver_id:
-                tm = get_travel_time_cached(passenger_id, driver_id, start_time)
+                tm, from_time = get_travel_time_cached(passenger_id, driver_id, goal_time)
             else:
-                tm = None
+                tm, from_time = None, None
 
             if tm is None:
                 tm = 999
+                from_time = None
 
-            traveltime.append((tm, passenger, driver))
+            traveltime.append((tm, passenger, driver, from_time))
     
 
     #ドライバーごとに乗客を割り当て
@@ -115,12 +116,12 @@ def calculate_carshare(request, round_id):
 
     assigned = set()
 
-    for tm, passenger, driver in traveltime:
+    for tm, passenger, driver, from_time in traveltime:
         if passenger in assigned:
-            continue #割り当て済みならスキップ
-        if remaining[driver]>0:
-            assignments[driver].append((passenger,tm))
-            remaining[driver]-=1
+            continue
+        if remaining[driver] > 0:
+            assignments[driver].append((passenger, tm, from_time))
+            remaining[driver] -= 1
             assigned.add(passenger)
 
     return render(request,'members/result.html',{'assignments':assignments,'round':round})

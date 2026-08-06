@@ -37,20 +37,19 @@ def get_travel_time(start_id, goal_id, start_time):
     params = {
         "start": start_id,
         "goal": goal_id,
-        "start_time": start_time,
+        "goal_time": start_time,
     }
 
     response = requests.get(url, headers=headers, params=params)
     if response.status_code != 200:
-        return None
+        return None, None
 
-    items = response.json().get("items", [])#get("items", [])もし仮にこれは存在しないキーをしていた場合に空のリストを返すもの
+    items = response.json().get("items", [])
     if not items:
-        return None
+        return None, None
 
-    return items[0]["summary"]["move"]["time"]
-
-
+    move = items[0]["summary"]["move"]
+    return move["time"], move["from_time"]
 
 
 
@@ -68,18 +67,20 @@ def get_station_id_cached(station_name):
     return station_id
 
 
-def get_travel_time_cached(start_id, goal_id, start_time):
+def get_travel_time_cached(start_id, goal_id, goal_time):
     cache = TravelTimeCache.objects.filter(
-        start_id=start_id, goal_id=goal_id
+        start_id=start_id, goal_id=goal_id, goal_time=goal_time
     ).first()
     if cache:
-        return cache.minutes
+        return cache.minutes, cache.from_time
 
-    minutes = get_travel_time(start_id, goal_id, start_time)
+    minutes, from_time = get_travel_time(start_id, goal_id, goal_time)
     if minutes is not None:
         TravelTimeCache.objects.create(
             start_id=start_id,
             goal_id=goal_id,
+            goal_time=goal_time,
             minutes=minutes,
+            from_time=from_time,
         )
-    return minutes
+    return minutes, from_time

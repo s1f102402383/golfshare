@@ -35,10 +35,11 @@ class StationCache(models.Model):
 class TravelTimeCache(models.Model):
     start_id = models.CharField(max_length=20)
     goal_id = models.CharField(max_length=20)
+    goal_time = models.CharField(max_length=30)
     minutes = models.IntegerField()
+    from_time = models.CharField(max_length=40)
 
     class Meta:
-        unique_together = ('start_id', 'goal_id')
-
+        unique_together = ('start_id', 'goal_id', 'goal_time')
 
 
