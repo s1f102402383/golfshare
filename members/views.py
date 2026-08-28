@@ -5,6 +5,8 @@ from django.contrib.auth.forms import UserCreationForm
 
 from .navitime import get_station_id_cached, get_travel_time_cached
 from .models import Member, Round, DriverPlan
+from .assignment import assign_ilp, assign_greedy, UNREACHABLE
+from .departure import check_departure
 class SignupForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         labels = {'username': 'ユーザー名'}
@@ -63,68 +65,113 @@ def add_round(request):
 
 
 
+def _gather_travel_times(passengers, drivers, meet_times, day):
+    """NAVITIME を呼んで、乗客×ドライバーの所要時間と出発時刻を集める。
+
+    駅IDの取得は二重ループの外に出してある。
+    以前はループ内で毎回呼んでいたため、キャッシュが空のとき
+    同じ駅を何度も問い合わせていた（P×D回 → 最大 P+D回 に削減）。
+
+    戻り値:
+        cost_table {(p.id, d.id): 所要時間(分)}   … 割り当てアルゴリズムへの入力
+        info_table {(p.id, d.id): (出発時刻, 妥当か, 理由)} … 画面表示用
+    """
+    # 駅名 -> 駅ID を先にまとめて引く
+    station_ids = {}
+    for member in list(passengers) + list(drivers):
+        name = member.nearest_station
+        if name not in station_ids:
+            station_ids[name] = get_station_id_cached(name)
+
+    cost_table = {}
+    info_table = {}
+
+    for driver in drivers:
+        meet_time = meet_times.get(driver.id)
+        if not meet_time:
+            # 集合時刻が未設定のドライバーは経路を計算できない
+            continue
+        goal_time = f"{day}T{meet_time}"
+        driver_station = station_ids.get(driver.nearest_station)
+
+        for passenger in passengers:
+            passenger_station = station_ids.get(passenger.nearest_station)
+
+            if passenger_station and driver_station:
+                minutes, from_time = get_travel_time_cached(
+                    passenger_station, driver_station, goal_time
+                )
+            else:
+                minutes, from_time = None, None
+
+            if minutes is None:
+                cost_table[(passenger.id, driver.id)] = UNREACHABLE
+                info_table[(passenger.id, driver.id)] = (
+                    None, False, "経路を取得できませんでした"
+                )
+                continue
+
+            cost_table[(passenger.id, driver.id)] = minutes
+            # 逆算された出発時刻が実在しうる値か検証する（課題B）
+            is_valid, reason = check_departure(from_time, minutes, day, meet_time)
+            info_table[(passenger.id, driver.id)] = (from_time, is_valid, reason)
+
+    return cost_table, info_table
+
+
 @login_required
 def calculate_carshare(request, round_id):
     #ラウンドを取得
     round=Round.objects.get(id=round_id)
 
-    #ドライバーと乗客を分ける
-
-    drivers = [m for m in round.members.all() if m.has_car]
-    passengers = [m for m in round.members.all() if not m.has_car]
+    #ドライバーと乗客を分ける（メンバーの取得は1回のクエリで済ませる）
+    members = list(round.members.all())
+    drivers = [m for m in members if m.has_car]
+    passengers = [m for m in members if not m.has_car]
 
     # 運転手ごとの集合時刻を辞書にしておく
     meet_times = {}
     for plan in DriverPlan.objects.filter(round=round):
         meet_times[plan.driver.id] = plan.meet_time
 
-    traveltime = []
-    for passenger in passengers:
-        for driver in drivers:
-            meet_time = meet_times.get(driver.id)
-            if not meet_time:
-                continue
+    cost_table, info_table = _gather_travel_times(
+        passengers, drivers, meet_times, round.day
+    )
 
-            goal_time = f"{round.day}T{meet_time}"
+    # 合計所要時間を最小化しつつ、乗車人数の差が1人以内に収まるよう割り当てる。
+    # 万一 CBC が動かない環境でも画面が出るよう、外部依存のない貪欲法に落とす。
+    result = assign_ilp(passengers, drivers, cost_table, max_spread=1)
+    if result is None:
+        result = assign_greedy(passengers, drivers, cost_table)
+    assigned_by_driver, unassigned = result
 
-            passenger_id = get_station_id_cached(passenger.nearest_station)
-            driver_id = get_station_id_cached(driver.nearest_station)
-
-            if passenger_id and driver_id:
-                tm, from_time = get_travel_time_cached(passenger_id, driver_id, goal_time)
-            else:
-                tm, from_time = None, None
-
-            if tm is None:
-                tm = 999
-                from_time = None
-
-            traveltime.append((tm, passenger, driver, from_time))
-    
-
-    #ドライバーごとに乗客を割り当て
-    traveltime.sort(key=lambda x: x[0])
-    # ドライバーごとの残席数
-    remaining={}
-    for driver in drivers:
-        remaining[driver]=driver.car_capacity
-
-    #各ドライバーに対して空のリストを用意している
+    # テンプレートが扱いやすいよう、ドライバーオブジェクトをキーにして
+    # 出発時刻とその妥当性を付け直す
     assignments = {}
     for driver in drivers:
-        assignments[driver] = []
+        rows = []
+        for passenger, minutes in assigned_by_driver.get(driver.id, []):
+            from_time, is_valid, reason = info_table.get(
+                (passenger.id, driver.id), (None, False, None)
+            )
+            rows.append({
+                'passenger': passenger,
+                'minutes': minutes,
+                'from_time': from_time,
+                'departure_ok': is_valid,
+                'departure_note': reason,
+            })
+        assignments[driver] = rows
 
-    assigned = set()
+    # 集合時刻が未設定のドライバーは経路計算の対象外になるので画面で知らせる
+    drivers_without_plan = [d for d in drivers if not meet_times.get(d.id)]
 
-    for tm, passenger, driver, from_time in traveltime:
-        if passenger in assigned:
-            continue
-        if remaining[driver] > 0:
-            assignments[driver].append((passenger, tm, from_time))
-            remaining[driver] -= 1
-            assigned.add(passenger)
-
-    return render(request,'members/result.html',{'assignments':assignments,'round':round})
+    return render(request, 'members/result.html', {
+        'assignments': assignments,
+        'round': round,
+        'unassigned': unassigned,
+        'drivers_without_plan': drivers_without_plan,
+    })
 
     
 def signup(request):
