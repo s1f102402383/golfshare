@@ -335,3 +335,32 @@ class CarshareViewTest(TestCase):
 
         self.assertEqual(len(response.context["unassigned"]), 4)
         self.assertContains(response, "割り当てできなかったメンバー")
+
+    @patch("members.views.get_travel_time_cached")
+    @patch("members.views.get_station_id_cached")
+    def test_no_api_calls_when_no_driver_has_a_meet_time(self, station, travel):
+        """集合時刻が誰も未設定なら、課金対象のAPIを一切呼ばない。"""
+        station.side_effect = lambda name: f"id-{name}"
+        travel.return_value = (20, "2026-08-30T07:10:00")
+        DriverPlan.objects.filter(round=self.round).delete()
+
+        response = self._get()
+
+        self.assertEqual(station.call_count, 0)
+        self.assertEqual(travel.call_count, 0)
+        self.assertEqual(len(response.context["unassigned"]), 4)
+        self.assertEqual(len(response.context["drivers_without_plan"]), 2)
+
+    @patch("members.views.get_travel_time_cached")
+    @patch("members.views.get_station_id_cached")
+    def test_station_of_driver_without_meet_time_is_not_looked_up(self, station, travel):
+        """集合時刻が未設定のドライバーの駅は引かない。"""
+        station.side_effect = lambda name: f"id-{name}"
+        travel.return_value = (20, "2026-08-30T07:10:00")
+        DriverPlan.objects.filter(driver=self.driver_b).delete()
+
+        self._get()
+
+        looked_up = {call.args[0] for call in station.call_args_list}
+        self.assertNotIn(self.driver_b.nearest_station, looked_up)
+        self.assertIn(self.driver_a.nearest_station, looked_up)

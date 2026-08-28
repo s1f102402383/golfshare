@@ -76,21 +76,24 @@ def _gather_travel_times(passengers, drivers, meet_times, day):
         cost_table {(p.id, d.id): 所要時間(分)}   … 割り当てアルゴリズムへの入力
         info_table {(p.id, d.id): (出発時刻, 妥当か, 理由)} … 画面表示用
     """
-    # 駅名 -> 駅ID を先にまとめて引く
+    cost_table = {}
+    info_table = {}
+
+    # 集合時刻が未設定のドライバーは経路を計算できないので先に外す。
+    # 駅IDの取得は課金対象なので、計算に使う分だけに絞ってから引く。
+    usable_drivers = [d for d in drivers if meet_times.get(d.id)]
+    if not passengers or not usable_drivers:
+        return cost_table, info_table
+
+    # 駅名 -> 駅ID をまとめて引く（同じ駅は1回だけ）
     station_ids = {}
-    for member in list(passengers) + list(drivers):
+    for member in list(passengers) + usable_drivers:
         name = member.nearest_station
         if name not in station_ids:
             station_ids[name] = get_station_id_cached(name)
 
-    cost_table = {}
-    info_table = {}
-
-    for driver in drivers:
-        meet_time = meet_times.get(driver.id)
-        if not meet_time:
-            # 集合時刻が未設定のドライバーは経路を計算できない
-            continue
+    for driver in usable_drivers:
+        meet_time = meet_times[driver.id]
         goal_time = f"{day}T{meet_time}"
         driver_station = station_ids.get(driver.nearest_station)
 
