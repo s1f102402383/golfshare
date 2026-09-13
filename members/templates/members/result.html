@@ -1,73 +1,102 @@
 {% extends 'members/base.html' %}
+{% block title %}配車プラン｜配車プランナー{% endblock %}
 {% block content %}
 
-<p class="page-title">配車プラン</p>
-<p class="page-sub">{{ round.day }}</p>
-
-<div class="meta">
-    <span>目的地 <strong>{{ round.destination }}</strong></span>
+<div class="page-head reveal">
+    <h1 class="page-title">配車プラン</h1>
+    <p class="page-sub">
+        {{ round.day|date:"Y年n月j日" }}（{{ round.day|date:"D" }}）・{{ round.destination }}
+    </p>
 </div>
 
 {% for driver, passengers in assignments.items %}
-<div class="card">
-    <div class="card-head">
-        <h3>{{ driver.name }}さんの車</h3>
-        <span class="badge badge-car">{{ driver.nearest_station }}</span>
-    </div>
-    <p style="font-size:13px; color:#6b7785; margin-bottom:10px;">同乗するメンバー</p>
-    {% for row in passengers %}
-        <div style="margin-bottom:6px;">
-            <span class="badge">{{ row.passenger.name }}</span>
-            <span style="font-size:13px; color:#6b7785;">
-                {% if row.departure_ok %}
-                    {{ row.passenger.nearest_station }}発 {{ row.from_time|slice:"11:16" }}　所要{{ row.minutes }}分
-                {% else %}
-                    {{ row.passenger.nearest_station }}発　所要{{ row.minutes }}分
-                {% endif %}
+<article class="card reveal" data-delay="{{ forloop.counter0 }}0">
+    <div class="card__head plan__driver">
+        <span class="row__avatar row__avatar--driver">
+            <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+        </span>
+        <span>
+            <span class="card__title">{{ driver.name }}さんの車</span>
+            <span class="row__sub">
+                <svg class="icon" aria-hidden="true"><use href="#i-train"></use></svg>{{ driver.nearest_station }}に集合
             </span>
-            {% if not row.departure_ok %}
-                <div style="font-size:12px; color:#c0392b; margin-top:2px;">
-                    ⚠ {{ row.departure_note }}
-                </div>
-            {% endif %}
+        </span>
+        <span class="plan__seats">{{ passengers|length|add:1 }} / {{ driver.car_capacity }}人</span>
+    </div>
+
+    <hr class="card__divider">
+
+    <div class="trip">
+        {% for row in passengers %}
+        <div class="trip__item">
+            <span class="trip__marker {% if not row.departure_ok %}trip__marker--warn{% endif %}">
+                <svg class="icon" aria-hidden="true"><use href="#i-train"></use></svg>
+            </span>
+            <div class="trip__body">
+                <p class="trip__name">{{ row.passenger.name }}</p>
+                <p class="trip__detail">
+                    <span>{{ row.passenger.nearest_station }}</span>
+                    {% if row.departure_ok %}
+                    <span class="trip__time">{{ row.from_time|slice:"11:16" }} 発</span>
+                    {% endif %}
+                    <span>所要 {{ row.minutes }}分</span>
+                </p>
+                {% if not row.departure_ok %}
+                <p class="trip__note">{{ row.departure_note }}</p>
+                {% endif %}
+            </div>
         </div>
-    {% empty %}
-        <p class="empty">同乗者なし</p>
-    {% endfor %}
+        {% empty %}
+        <p class="empty" style="padding:16px 0;">同乗する人はいません（1人で向かいます）</p>
+        {% endfor %}
+    </div>
+</article>
+{% empty %}
+<div class="card reveal">
+    <div class="empty">
+        <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+        <p class="empty__title">車を出せる人が参加していません</p>
+        <p>おでかけの参加メンバーに、車を出せる人を入れてください。</p>
+    </div>
 </div>
 {% endfor %}
 
 {% if unassigned %}
-<div class="card">
-    <div class="card-head">
-        <h3>割り当てできなかったメンバー</h3>
-    </div>
-    {% for passenger in unassigned %}
-        <div style="margin-bottom:6px;">
-            <span class="badge">{{ passenger.name }}</span>
-            <span style="font-size:13px; color:#6b7785;">{{ passenger.nearest_station }}</span>
+<div class="notice notice--warn reveal">
+    <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+    <div class="notice__body">
+        <p class="notice__title">乗る車が決まらなかった人</p>
+        <div class="badges" style="margin:8px 0;">
+            {% for passenger in unassigned %}
+            <span class="badge badge--warn">{{ passenger.name }}（{{ passenger.nearest_station }}）</span>
+            {% endfor %}
         </div>
-    {% endfor %}
-    <p style="font-size:12px; color:#6b7785; margin-top:8px;">
-        座席が足りないか、公共交通機関での経路が見つかりませんでした。
-    </p>
+        <p>座席が足りないか、電車での経路が見つかりませんでした。</p>
+    </div>
 </div>
 {% endif %}
 
 {% if drivers_without_plan %}
-<div class="card">
-    <div class="card-head">
-        <h3>集合時刻が未設定の運転手</h3>
-    </div>
-    {% for driver in drivers_without_plan %}
-        <div style="margin-bottom:6px;">
-            <span class="badge badge-car">{{ driver.name }}</span>
+<div class="notice notice--info reveal">
+    <svg class="icon" aria-hidden="true"><use href="#i-calendar-edit"></use></svg>
+    <div class="notice__body">
+        <p class="notice__title">集合時刻が未設定の運転手</p>
+        <div class="badges" style="margin:8px 0;">
+            {% for driver in drivers_without_plan %}
+            <span class="badge badge--car">
+                <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>{{ driver.name }}
+            </span>
+            {% endfor %}
         </div>
-    {% endfor %}
-    <p style="font-size:12px; color:#6b7785; margin-top:8px;">
-        集合時刻を設定すると割り当ての候補に入ります。
-    </p>
+        <p>集合時刻が無いと経路を計算できないため、この車は割り当ての対象外になっています。</p>
+    </div>
 </div>
 {% endif %}
+
+<p style="text-align:center; margin-top:24px;">
+    <a href="{% url 'index' %}" class="btn btn--ghost">
+        <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg>ホームに戻る
+    </a>
+</p>
 
 {% endblock %}

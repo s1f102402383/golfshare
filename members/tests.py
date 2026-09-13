@@ -368,7 +368,7 @@ class CarshareViewTest(TestCase):
         response = self._get()
 
         self.assertEqual(len(response.context["unassigned"]), 4)
-        self.assertContains(response, "割り当てできなかったメンバー")
+        self.assertContains(response, "乗る車が決まらなかった人")
 
     @patch("members.views.get_travel_time_cached")
     @patch("members.views.get_station_id_cached")
@@ -398,3 +398,72 @@ class CarshareViewTest(TestCase):
         looked_up = {call.args[0] for call in station.call_args_list}
         self.assertNotIn(self.driver_b.nearest_station, looked_up)
         self.assertIn(self.driver_a.nearest_station, looked_up)
+
+
+class PageRenderTest(TestCase):
+    """画面まわりの土台の確認。UIを作り替えても壊れていないことを見る。"""
+
+    def setUp(self):
+        self.user = User.objects.create_user("tester", password="pw-for-test-1234")
+        self.client.force_login(self.user)
+        self.driver = Member.objects.create(
+            user=self.user, name="佐藤", nearest_station="赤羽",
+            has_car=True, car_capacity=5,
+        )
+        self.rider = Member.objects.create(
+            user=self.user, name="鈴木", nearest_station="池袋",
+        )
+        self.round = Round.objects.create(
+            user=self.user, day=date(2026, 10, 1), destination="テストGC",
+        )
+        self.round.members.set([self.driver, self.rider])
+
+    def test_every_page_renders(self):
+        pages = [
+            ("index", []), ("add_member", []), ("add_round", []),
+            ("edit_member", [self.driver.id]), ("signup", []),
+        ]
+        for name, args in pages:
+            with self.subTest(page=name):
+                self.assertEqual(
+                    self.client.get(reverse(name, args=args)).status_code, 200
+                )
+        self.assertEqual(self.client.get(reverse("login")).status_code, 200)
+
+    def test_login_page_has_no_app_menu(self):
+        """未ログインの画面に、ログインしないと使えないメニューを出さない。"""
+        self.client.logout()
+        html = self.client.get(reverse("login")).content.decode()
+        self.assertNotIn("メンバー登録", html)
+        self.assertNotIn("おでかけ作成", html)
+
+    def test_delete_requires_post(self):
+        """削除はPOSTのみ。URLを踏んだだけで消えないようにする。"""
+        self.assertEqual(
+            self.client.get(
+                reverse("delete_member", args=[self.rider.id])
+            ).status_code,
+            405,
+        )
+        self.client.post(reverse("delete_member", args=[self.rider.id]))
+        self.assertFalse(Member.objects.filter(id=self.rider.id).exists())
+
+        self.client.post(reverse("delete_round", args=[self.round.id]))
+        self.assertFalse(Round.objects.filter(id=self.round.id).exists())
+
+    def test_other_users_round_is_hidden(self):
+        other = User.objects.create_user("other", password="pw-for-test-1234")
+        self.client.force_login(other)
+        self.assertEqual(
+            self.client.get(
+                reverse("carshare_result", args=[self.round.id])
+            ).status_code,
+            404,
+        )
+
+    def test_capacity_is_cleared_when_not_a_driver(self):
+        """車のチェックを外したときに、隠れた入力欄の定員が残らないこと。"""
+        self.client.post(reverse("add_member"), {
+            "name": "田中", "nearest_station": "大宮", "car_capacity": "5",
+        })
+        self.assertEqual(Member.objects.get(name="田中").car_capacity, 0)

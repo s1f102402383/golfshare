@@ -1,36 +1,102 @@
 {% extends 'members/base.html' %}
+{% block title %}おでかけを作成｜配車プランナー{% endblock %}
 {% block content %}
 
-<p class="page-title">おでかけを作成</p>
-<p class="page-sub">日付・参加メンバー・運転手ごとの集合時刻を設定します</p>
+<div class="page-head reveal">
+    <h1 class="page-title">おでかけを作成</h1>
+    <p class="page-sub">「おでかけ」は、みんなで車移動する予定1回分のことです。</p>
+</div>
 
-<div class="card">
-    <form method="POST" action="{% url 'add_round' %}">
+{% if not members %}
+<div class="card reveal">
+    <div class="empty">
+        <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+        <p class="empty__title">先にメンバーを登録してください</p>
+        <p>おでかけには、登録済みのメンバーから参加する人を選びます。</p>
+        <a href="{% url 'add_member' %}" class="btn btn--sm" style="margin-top:14px;">
+            <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg>メンバーを登録する
+        </a>
+    </div>
+</div>
+{% else %}
+
+<noscript><style>.timeslot[hidden] { display: flex; }</style></noscript>
+
+<div class="card reveal">
+    <form method="POST" action="{% url 'add_round' %}" id="round-form">
         {% csrf_token %}
-        <label for="day">日付</label>
-        <input type="date" name="day" required>
 
-        <label for="destination">目的地</label>
-        <input type="text" name="destination" required>
+        <div class="field">
+            <label for="day">日付</label>
+            <input type="date" id="day" name="day" required>
+        </div>
 
-        <label>参加メンバー</label>
-        <div class="checkbox-row">
+        <div class="field">
+            <label for="destination">行き先</label>
+            <input type="text" id="destination" name="destination"
+                   placeholder="例）〇〇ゴルフクラブ" required autocomplete="off">
+        </div>
+
+        <div class="field">
+            <span class="field__label">参加する人</span>
+            <p class="field__hint">この中から、車を出せる人と乗せてもらう人を自動で振り分けます。</p>
+            <div class="choices">
+                {% for member in members %}
+                <label class="choice">
+                    <input type="checkbox" name="members" value="{{ member.id }}"
+                           data-member data-has-car="{% if member.has_car %}1{% else %}0{% endif %}"
+                           data-capacity="{{ member.car_capacity }}">
+                    <span class="choice__box">
+                        <svg class="icon choice__off" aria-hidden="true"><use href="#i-check-box-blank"></use></svg>
+                        <svg class="icon choice__on" aria-hidden="true"><use href="#i-check-box"></use></svg>
+                        {{ member.name }}
+                        {% if member.has_car %}<span class="choice__tag">車</span>{% endif %}
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+
+            <div class="picksum" id="pick-summary">
+                <span class="picksum__item"><span class="picksum__num" data-sum="people">0</span>人が参加</span>
+                <span class="picksum__item"><span class="picksum__num" data-sum="cars">0</span>台の車</span>
+                <span class="picksum__item">同乗できるのは<span class="picksum__num" data-sum="seats" style="margin-left:3px;">0</span>人</span>
+                <span class="picksum__warn" data-sum="warn" hidden>
+                    <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+                    座席が足りません。車を出せる人を追加するか、参加者を減らしてください。
+                </span>
+            </div>
+        </div>
+
+        <div class="field" id="driver-block">
+            <span class="field__label">運転手の集合時刻</span>
+            <p class="field__hint">同乗する人は、この時刻に間に合う電車で向かいます。未入力の車は計算に入りません。</p>
+
+            <p class="empty" id="driver-empty" style="padding:18px 0;">
+                上で車を出せる人を選ぶと、集合時刻の入力欄が出ます。
+            </p>
+
             {% for member in members %}
-            <label><input type="checkbox" name="members" value="{{ member.id }}"> {{ member.name }}</label>
+                {% if member.has_car %}
+                <div class="timeslot" data-driver="{{ member.id }}" hidden>
+                    <span class="timeslot__who">
+                        {{ member.name }}
+                        <span class="timeslot__where">{{ member.nearest_station }}に集合</span>
+                    </span>
+                    <input type="time" name="meet_time_{{ member.id }}" aria-label="{{ member.name }}さんの集合時刻">
+                </div>
+                {% endif %}
             {% endfor %}
         </div>
 
-        <label>運転手ごとの集合時刻</label>
-        <p class="page-sub">車を出す人だけ入力してください</p>
-        {% for member in members %}
-            {% if member.has_car %}
-            <label for="meet_time_{{ member.id }}">{{ member.name }}（{{ member.nearest_station }}）</label>
-            <input type="time" name="meet_time_{{ member.id }}">
-            {% endif %}
-        {% endfor %}
-
-        <button type="submit" class="btn">作成する</button>
+        <button type="submit" class="btn btn--block">
+            <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>おでかけを作成する
+        </button>
     </form>
 </div>
+
+<p style="text-align:center; margin-top:18px;">
+    <a href="{% url 'index' %}" class="linklike">ホームに戻る</a>
+</p>
+{% endif %}
 
 {% endblock %}
