@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 from pathlib import Path
 import os
 
@@ -21,11 +22,24 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-x2@#_sbk6ny6(c(@agwkspffy_c)s)_+^gb25iq8lk!9r4_dfo'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'True') == 'True'
+
+# SECURITY WARNING: keep the secret key used in production secret!
+#
+# セッションの署名やパスワードリセットのトークン生成に使う鍵。
+# 漏れると他人になりすましてログインできてしまうため、
+# 本番では環境変数で渡す（Render では render.yaml の generateValue で自動生成）。
+# 未設定のまま本番が起動しないよう、DEBUG=False なら例外で止める。
+SECRET_KEY = os.environ.get('SECRET_KEY')
+
+if not SECRET_KEY:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'SECRET_KEY が設定されていません。本番では環境変数で渡してください。'
+        )
+    # ローカル開発専用の固定値。リポジトリに入っているので本番では使わない。
+    SECRET_KEY = 'django-insecure-x2@#_sbk6ny6(c(@agwkspffy_c)s)_+^gb25iq8lk!9r4_dfo'
 
 ALLOWED_HOSTS = ['*']
 
