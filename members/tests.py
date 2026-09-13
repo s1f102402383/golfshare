@@ -19,6 +19,7 @@ from .assignment import (
     assign_hungarian,
     assign_ilp,
     load_counts,
+    passenger_seats,
     total_minutes,
 )
 from .departure import check_departure
@@ -47,10 +48,10 @@ class GreedyVsOptimalTest(SimpleTestCase):
     """貪欲法が最適でないことを示す、改善の根拠となるテスト。"""
 
     def test_greedy_is_far_from_optimal(self):
-        # 定員1の車が2台。貪欲法は最短の (p1,A)=1分 を先に確定させるため、
-        # p2 が A に乗れなくなり 100分の B に回されてしまう。
+        # 同乗1人ずつ(定員2)の車が2台。貪欲法は最短の (p1,A)=1分 を先に確定
+        # させるため、p2 が A に乗れなくなり 100分の B に回されてしまう。
         p1, p2 = FakePassenger(1), FakePassenger(2)
-        a, b = FakeDriver(10, 1), FakeDriver(11, 1)
+        a, b = FakeDriver(10, 2), FakeDriver(11, 2)
         cost = {
             (1, 10): 1, (2, 10): 2,
             (1, 11): 3, (2, 11): 100,
@@ -67,9 +68,10 @@ class BalanceTest(SimpleTestCase):
     """人数の偏りを、どの方式ならどこまで抑えられるかを固定するテスト。"""
 
     def _skewed_case(self):
-        # 4人全員がAの駅に近く(5分)、Bは遠い(25分)。定員はどちらも3。
+        # 4人全員がAの駅に近く(5分)、Bは遠い(25分)。
+        # どちらも定員4＝同乗3人まで乗せられる。
         passengers = [FakePassenger(i) for i in range(1, 5)]
-        a, b = FakeDriver(10, 3), FakeDriver(11, 3)
+        a, b = FakeDriver(10, 4), FakeDriver(11, 4)
         cost = {}
         for p in passengers:
             cost[(p.id, 10)] = 5
@@ -120,7 +122,7 @@ class UnreachableTest(SimpleTestCase):
 
     def test_unreachable_passenger_is_reported_not_assigned(self):
         passengers = [FakePassenger(i) for i in range(1, 4)]
-        a, b = FakeDriver(10, 2), FakeDriver(11, 2)
+        a, b = FakeDriver(10, 3), FakeDriver(11, 3)
         cost = {
             (1, 10): 10, (1, 11): 20,
             (2, 10): 15, (2, 11): 12,
@@ -140,7 +142,7 @@ class UnreachableTest(SimpleTestCase):
 
 class EdgeCaseTest(SimpleTestCase):
     def test_no_passengers(self):
-        drivers = [FakeDriver(10, 3)]
+        drivers = [FakeDriver(10, 4)]
         assignments, unassigned = assign_ilp([], drivers, {}, max_spread=1)
         self.assertEqual(load_counts(assignments), {10: 0})
         self.assertEqual(unassigned, [])
@@ -151,21 +153,25 @@ class EdgeCaseTest(SimpleTestCase):
         self.assertEqual(assignments, {})
         self.assertEqual(unassigned, passengers)
 
-    def test_capacity_zero_driver_is_ignored(self):
-        passengers = [FakePassenger(1)]
-        empty_car, real_car = FakeDriver(10, 0), FakeDriver(11, 2)
-        cost = {(1, 10): 5, (1, 11): 30}
+    def test_driver_with_no_spare_seat_is_ignored(self):
+        """定員1(運転手のみ)と未入力の0は、近くても同乗者を乗せない。"""
+        for capacity in (0, 1):
+            passengers = [FakePassenger(1)]
+            no_seat, real_car = FakeDriver(10, capacity), FakeDriver(11, 3)
+            cost = {(1, 10): 5, (1, 11): 30}
 
-        assignments, unassigned = assign_ilp(
-            passengers, [empty_car, real_car], cost, max_spread=1
-        )
+            assignments, unassigned = assign_ilp(
+                passengers, [no_seat, real_car], cost, max_spread=1
+            )
 
-        self.assertEqual(load_counts(assignments), {10: 0, 11: 1})
-        self.assertEqual(unassigned, [])
+            self.assertEqual(
+                load_counts(assignments), {10: 0, 11: 1}, f"定員{capacity}"
+            )
+            self.assertEqual(unassigned, [])
 
     def test_more_passengers_than_seats(self):
         passengers = [FakePassenger(i) for i in range(1, 5)]
-        driver = FakeDriver(10, 2)
+        driver = FakeDriver(10, 3)
         cost = {(p.id, 10): 10 for p in passengers}
 
         assignments, unassigned = assign_ilp(
@@ -174,6 +180,34 @@ class EdgeCaseTest(SimpleTestCase):
 
         self.assertEqual(load_counts(assignments), {10: 2})
         self.assertEqual(len(unassigned), 2)
+
+
+class CapacityIncludesDriverTest(SimpleTestCase):
+    """car_capacity は運転手を含む乗車定員である、という取り決めの確認。
+
+    以前は「同乗できる人数」として扱っていたため、4人乗りの車に
+    4人を同乗させて車内5人になる割り当てが起こりえた。
+    """
+
+    def test_passenger_seats_excludes_the_driver(self):
+        self.assertEqual(passenger_seats(FakeDriver(10, 4)), 3)
+        self.assertEqual(passenger_seats(FakeDriver(10, 1)), 0)
+        self.assertEqual(passenger_seats(FakeDriver(10, 0)), 0)
+
+    def test_four_seater_takes_at_most_three_passengers(self):
+        # 4人乗り1台に5人が乗りたい。全員その車が最短でも、乗れるのは3人。
+        passengers = [FakePassenger(i) for i in range(1, 6)]
+        driver = FakeDriver(10, 4)
+        cost = {(p.id, 10): 10 for p in passengers}
+
+        for name, result in {
+            "greedy": assign_greedy(passengers, [driver], cost),
+            "hungarian": assign_hungarian(passengers, [driver], cost),
+            "ilp": assign_ilp(passengers, [driver], cost, max_spread=1),
+        }.items():
+            assignments, unassigned = result
+            self.assertEqual(load_counts(assignments), {10: 3}, name)
+            self.assertEqual(len(unassigned), 2, name)
 
 
 class DepartureCheckTest(SimpleTestCase):
@@ -242,8 +276,8 @@ class CarshareViewTest(TestCase):
             )
 
         # 全員がAの駅に近く、Bは遠い（偏りが起きる例1と同じ構図）
-        self.driver_a = member("Aさん", "A駅", has_car=True, capacity=3)
-        self.driver_b = member("Bさん", "B駅", has_car=True, capacity=3)
+        self.driver_a = member("Aさん", "A駅", has_car=True, capacity=4)
+        self.driver_b = member("Bさん", "B駅", has_car=True, capacity=4)
         self.passengers = [member(f"p{i}", f"P{i}駅") for i in range(1, 5)]
 
         self.round = Round.objects.create(

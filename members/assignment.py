@@ -7,7 +7,11 @@ NAVITIME API への依存をここには持ち込まず、
 用語:
     cost_table: {(passenger.id, driver.id): 所要時間(分)} の辞書。
                 経路が取得できなかった組み合わせは UNREACHABLE を入れる。
-    seat      : 「ドライバー1人 × 定員1席」の単位。定員3の車は3席に展開する。
+    seat      : 「ドライバー1人 × 同乗者1席」の単位。
+                定員4の車は運転手を除いた3席に展開する。
+
+Member.car_capacity は「運転手を含む乗車定員」。
+同乗者を何人乗せられるかは passenger_seats() で求める。
 """
 
 import pulp
@@ -20,6 +24,15 @@ UNREACHABLE = 999
 # ILP で「1人を割り当てずに諦める」ことのコスト。
 # UNREACHABLE より十分大きくして、乗せられる人は必ず乗せる方を優先させる。
 UNASSIGNED_PENALTY = 10000
+
+
+def passenger_seats(driver):
+    """そのドライバーが同乗者を何人乗せられるか。
+
+    car_capacity は運転手を含む乗車定員なので、運転手ぶんの1席を引く。
+    定員4の車なら同乗者は3人、定員1（運転手のみ）や未入力の0なら0人。
+    """
+    return max(0, driver.car_capacity - 1)
 
 
 def _cost(cost_table, passenger, driver):
@@ -42,7 +55,7 @@ def assign_greedy(passengers, drivers, cost_table):
             pairs.append((_cost(cost_table, passenger, driver), passenger, driver))
     pairs.sort(key=lambda x: x[0])
 
-    remaining = {driver.id: driver.car_capacity for driver in drivers}
+    remaining = {driver.id: passenger_seats(driver) for driver in drivers}
     assignments = {driver.id: [] for driver in drivers}
     assigned = set()
 
@@ -63,15 +76,15 @@ def assign_greedy(passengers, drivers, cost_table):
 
 
 def _build_seats(drivers):
-    """ドライバーを定員数だけ「席」に展開する。
+    """ドライバーを同乗者の席数だけ「席」に展開する。
 
-    定員3のドライバーAは (A,0) (A,1) (A,2) という3席になる。
+    定員4（運転手含む）のドライバーAは (A,0) (A,1) (A,2) という3席になる。
     こうすると「乗客 → 席」の1対1対応問題に変換でき、
     ハンガリアン法（linear_sum_assignment）がそのまま使える。
     """
     seats = []
     for driver in drivers:
-        for seat_index in range(max(0, driver.car_capacity)):
+        for seat_index in range(passenger_seats(driver)):
             seats.append((driver, seat_index))
     return seats
 
@@ -146,13 +159,13 @@ def assign_ilp(passengers, drivers, cost_table, max_spread=1):
         変数   x[p][d] ∈ {0,1}   乗客pを車dに乗せるか
         目的   Σ 所要時間 * x  +  未割当ペナルティ * (割り当てられなかった人数)
         制約   各乗客は高々1台      Σ_d x[p][d] <= 1
-               定員                  Σ_p x[p][d] <= capacity[d]
+               定員                  Σ_p x[p][d] <= 乗車定員[d] - 1（運転手ぶん）
                偏り                  load_min <= Σ_p x[p][d] <= load_max
                                      load_max - load_min <= max_spread
 
     解が存在しない場合は None を返すので、呼び出し側でフォールバックする。
     """
-    usable_drivers = [d for d in drivers if d.car_capacity > 0]
+    usable_drivers = [d for d in drivers if passenger_seats(d) > 0]
     assignments = {driver.id: [] for driver in drivers}
 
     if not passengers or not usable_drivers:
@@ -195,7 +208,7 @@ def assign_ilp(passengers, drivers, cost_table, max_spread=1):
         load = pulp.lpSum(
             x[(p.id, driver.id)] for p in passengers if (p.id, driver.id) in x
         )
-        problem += load <= driver.car_capacity
+        problem += load <= passenger_seats(driver)
         problem += load <= load_max
         problem += load >= load_min
     problem += load_max - load_min <= max_spread
