@@ -3,21 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>配車プラン作成</title>
+    <meta name="theme-color" content="#14324e">
+    <title>{% block title %}配車プランナー{% endblock %}</title>
     {% load static %}
     <link rel="stylesheet" href="{% static 'members/style.css' %}">
+    {# JSが動く環境でだけ「ふわっと出す」演出を有効にする。 #}
+    {# JSが無効でも中身が消えないよう、初期状態は表示のままにしておく。 #}
+    <script>document.documentElement.className = 'js';</script>
 </head>
-<body>
-    <div class="header">
-        <a href="{% url 'index' %}" class="logo">配車プランナー</a>
-        <nav>
-            <a href="{% url 'add_member' %}">メンバー登録</a>
-            <a href="{% url 'add_round' %}">おでかけ作成</a>
+<body class="{% block body_class %}{% endblock %}">
+{% include 'members/_icons.html' %}
+
+<header class="header">
+    <div class="header__inner">
+        <a href="{% url 'index' %}" class="brand">
+            <span class="brand__mark"><svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg></span>
+            <span class="brand__text">配車プランナー</span>
+        </a>
+
+        {% if user.is_authenticated %}
+        <nav class="nav" aria-label="メインメニュー">
+            <a href="{% url 'index' %}" class="nav__link {% if nav == 'home' %}is-active{% endif %}">
+                <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg><span>ホーム</span>
+            </a>
+            <a href="{% url 'add_member' %}" class="nav__link {% if nav == 'member' %}is-active{% endif %}">
+                <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg><span>メンバー登録</span>
+            </a>
+            <a href="{% url 'add_round' %}" class="nav__link {% if nav == 'round' %}is-active{% endif %}">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar-edit"></use></svg><span>おでかけ作成</span>
+            </a>
         </nav>
+
+        <div class="header__user">
+            <span class="header__name">{{ user.username }}</span>
+            <form method="POST" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--quiet btn--sm">ログアウト</button>
+            </form>
+        </div>
+        {% endif %}
     </div>
-    <div class="container">
-        {% block content %}
-        {% endblock %}
+</header>
+
+<main class="container">
+    {% block content %}{% endblock %}
+</main>
+
+{% if user.is_authenticated %}
+<nav class="tabbar" aria-label="メインメニュー">
+    <a href="{% url 'index' %}" class="tabbar__link {% if nav == 'home' %}is-active{% endif %}">
+        <svg class="icon" aria-hidden="true"><use href="#i-home"></use></svg><span>ホーム</span>
+    </a>
+    <a href="{% url 'add_member' %}" class="tabbar__link {% if nav == 'member' %}is-active{% endif %}">
+        <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg><span>メンバー</span>
+    </a>
+    <a href="{% url 'add_round' %}" class="tabbar__link {% if nav == 'round' %}is-active{% endif %}">
+        <svg class="icon" aria-hidden="true"><use href="#i-calendar-edit"></use></svg><span>おでかけ</span>
+    </a>
+</nav>
+{% endif %}
+
+{% if messages %}
+<div class="toasts" id="toasts">
+    {% for message in messages %}
+    <div class="toast toast--{{ message.tags|default:'info' }}" role="status">
+        <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>
+        <span>{{ message }}</span>
+        <button type="button" class="toast__close" aria-label="閉じる">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
     </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# 配車計算はNAVITIMEを何度も呼ぶため数十秒かかることがある。 #}
+{# 白い画面のまま待たせないよう、遷移前にこのオーバーレイを出す。 #}
+<div class="loader" id="loader" hidden aria-live="polite">
+    <div class="loader__panel">
+        <div class="loader__road" aria-hidden="true">
+            <span class="loader__station loader__station--start"><svg class="icon"><use href="#i-train"></use></svg></span>
+            <span class="loader__line"><i class="loader__progress"></i></span>
+            <span class="loader__station loader__station--goal"><svg class="icon"><use href="#i-trip"></use></svg></span>
+            <span class="loader__car"><svg class="icon"><use href="#i-car"></use></svg></span>
+        </div>
+        <p class="loader__title">配車を計算しています</p>
+        <p class="loader__note">経路の検索に少し時間がかかります。<br>このまま閉じずにお待ちください。</p>
+        <ol class="loader__steps">
+            <li class="loader__step" data-step="0">
+                <span class="loader__dot"><svg class="icon"><use href="#i-check-circle"></use></svg></span>最寄り駅を調べています
+            </li>
+            <li class="loader__step" data-step="1">
+                <span class="loader__dot"><svg class="icon"><use href="#i-check-circle"></use></svg></span>電車の経路と所要時間を取得しています
+            </li>
+            <li class="loader__step" data-step="2">
+                <span class="loader__dot"><svg class="icon"><use href="#i-check-circle"></use></svg></span>いちばん早い組み合わせを計算しています
+            </li>
+        </ol>
+    </div>
+</div>
+
+<div class="modal" id="confirm" hidden>
+    <div class="modal__backdrop" data-confirm-cancel></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+        <p class="modal__title" id="confirm-title">削除しますか？</p>
+        <p class="modal__body" id="confirm-body">この操作は取り消せません。</p>
+        <div class="modal__actions">
+            <button type="button" class="btn btn--ghost" data-confirm-cancel>キャンセル</button>
+            <button type="button" class="btn btn--danger" id="confirm-ok">
+                <svg class="icon" aria-hidden="true"><use href="#i-delete"></use></svg>削除する
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'members/app.js' %}" defer></script>
 </body>
 </html>

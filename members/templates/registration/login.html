@@ -1,16 +1,37 @@
 {% extends 'members/base.html' %}
+{% block title %}ログイン｜配車プランナー{% endblock %}
+{% block body_class %}page-auth{% endblock %}
 {% block content %}
 
-<div class="card" style="max-width:400px; margin:40px auto;">
-    <p class="page-title" style="text-align:center;">ログイン</p>
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn" style="width:100%;">ログイン</button>
-    </form>
-    <p style="text-align:center; margin-top:16px; font-size:13px;">
-        <a href="{% url 'signup' %}" style="color:#0b3d67;">新規登録はこちら</a>
-    </p>
+<div class="auth">
+    <div class="auth__card">
+        <p class="auth__title">ログイン</p>
+        <p class="auth__sub">配車プランナーにようこそ</p>
+
+        {% if form.errors %}
+        <div class="notice notice--warn" style="margin-bottom:18px;">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+            <div class="notice__body">ユーザー名またはパスワードが正しくありません。</div>
+        </div>
+        {% endif %}
+
+        <form method="POST" class="authform">
+            {% csrf_token %}
+            <div class="field">
+                <label for="{{ form.username.id_for_label }}">ユーザー名</label>
+                {{ form.username }}
+            </div>
+            <div class="field">
+                <label for="{{ form.password.id_for_label }}">パスワード</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn--block">ログイン</button>
+        </form>
+
+        <p class="auth__foot">
+            はじめての方は <a href="{% url 'signup' %}">アカウントを作成</a>
+        </p>
+    </div>
 </div>
 
 {% endblock %}

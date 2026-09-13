@@ -1,4 +1,6 @@
-from django.shortcuts import render,redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
+from django.views.decorators.http import require_POST
 from .models import Member,Round
 
 from django.contrib.auth.forms import UserCreationForm
@@ -17,23 +19,29 @@ from django.contrib.auth.decorators import login_required
 @login_required
 def index(request):
     contents = Member.objects.filter(user=request.user)
-    rounds = Round.objects.filter(user=request.user)
-    return render(request,'members/index.html',{'members': contents,'rounds':rounds})
+    rounds = Round.objects.filter(user=request.user).order_by('day')
+    return render(request, 'members/index.html', {
+        'members': contents,
+        'rounds': rounds,
+        'nav': 'home',
+    })
 
 @login_required
 def add_member(request):
-    if request.method=='POST':
-       Member.objects.create(
-           user=request.user,
-           name=request.POST['name'],
-           nearest_station=request.POST['nearest_station'],
-           has_car = request.POST.get('has_car') == 'true',
-           car_capacity=request.POST['car_capacity'] or 0,
-       )
-       return redirect('index')
+    if request.method == 'POST':
+        has_car = request.POST.get('has_car') == 'true'
+        member = Member.objects.create(
+            user=request.user,
+            name=request.POST['name'],
+            nearest_station=request.POST['nearest_station'],
+            has_car=has_car,
+            # 車を出さない人の定員は持たせない（入力欄が隠れたまま値が残ることがある）
+            car_capacity=(request.POST.get('car_capacity') or 0) if has_car else 0,
+        )
+        messages.success(request, f'{member.name}さんを登録しました')
+        return redirect('index')
 
-    else:
-        return render(request,'members/add_member.html')
+    return render(request, 'members/add_member.html', {'nav': 'member'})
 
 @login_required
 def add_round(request):
@@ -56,10 +64,14 @@ def add_round(request):
                         driver=member,
                         meet_time=meet_time,
                     )
+        messages.success(request, f'{round.destination}へのおでかけを作成しました')
         return redirect('index')
     else:
         members = Member.objects.filter(user=request.user)
-        return render(request, 'members/add_round.html', {'members': members})
+        return render(request, 'members/add_round.html', {
+            'members': members,
+            'nav': 'round',
+        })
 
 
 
@@ -124,8 +136,8 @@ def _gather_travel_times(passengers, drivers, meet_times, day):
 
 @login_required
 def calculate_carshare(request, round_id):
-    #ラウンドを取得
-    round=Round.objects.get(id=round_id)
+    #ラウンドを取得（自分のものだけ）
+    round = get_object_or_404(Round, id=round_id, user=request.user)
 
     #ドライバーと乗客を分ける（メンバーの取得は1回のクエリで済ませる）
     members = list(round.members.all())
@@ -174,6 +186,7 @@ def calculate_carshare(request, round_id):
         'round': round,
         'unassigned': unassigned,
         'drivers_without_plan': drivers_without_plan,
+        'nav': 'home',
     })
 
     
@@ -182,6 +195,7 @@ def signup(request):
         form = SignupForm(request.POST)
         if form.is_valid():
             form.save()
+            messages.success(request, 'アカウントを作成しました。ログインしてください')
             return redirect('login')
     else:
         form = SignupForm()
@@ -189,29 +203,34 @@ def signup(request):
 
 
 @login_required
+@require_POST
 def delete_member(request, member_id):
-    member = Member.objects.get(id=member_id, user=request.user)
+    member = get_object_or_404(Member, id=member_id, user=request.user)
+    name = member.name
     member.delete()
+    messages.success(request, f'{name}さんを削除しました')
     return redirect('index')
 
 
 @login_required
-def edit_member(request,member_id):
-    member=Member.objects.get(id=member_id,user=request.user)
-    if request.method=='POST':
-        member.name=request.POST['name']
+def edit_member(request, member_id):
+    member = get_object_or_404(Member, id=member_id, user=request.user)
+    if request.method == 'POST':
+        member.name = request.POST['name']
         member.nearest_station = request.POST['nearest_station']
         member.has_car = request.POST.get('has_car') == 'true'
-        member.car_capacity = request.POST['car_capacity'] or 0
+        member.car_capacity = (request.POST.get('car_capacity') or 0) if member.has_car else 0
         member.save()
+        messages.success(request, f'{member.name}さんの登録内容を更新しました')
         return redirect('index')
 
-    else:
-        return render(request,'members/edit_member.html', {'member': member})
+    return render(request, 'members/edit_member.html', {'member': member, 'nav': 'member'})
 
 
 @login_required
+@require_POST
 def delete_round(request, round_id):
-    round = Round.objects.get(id=round_id, user=request.user)
+    round = get_object_or_404(Round, id=round_id, user=request.user)
     round.delete()
+    messages.success(request, 'おでかけを削除しました')
     return redirect('index')

@@ -1,64 +1,157 @@
 {% extends 'members/base.html' %}
+{% block title %}ホーム｜配車プランナー{% endblock %}
 {% block content %}
 
-<p class="page-title">メンバー一覧</p>
-<p class="page-sub">登録されているメンバーと車の情報</p>
+<section class="hero reveal">
+    <p class="hero__eyebrow">こんにちは、{{ user.username }}さん</p>
+    <p class="hero__title">今日の配車を決めましょう</p>
+    <p class="hero__text">
+        参加する人にチェックを入れるだけで、最寄り駅と車の定員から
+        「誰がどの車に乗るか」を自動で決めます。
+    </p>
+</section>
 
-<div class="card">
-    <table>
-        <tr>
-            <th>名前</th>
-            <th>最寄り駅</th>
-            <th>車</th>
-            <th>乗車定員</th>
-            <th></th>
-        </tr>
-        
-        {% for member in members %}
-        <tr>
-            <td>{{ member.name }}</td>
-            <td>{{ member.nearest_station }}</td>
-            <td>
-                {% if member.has_car %}<span class="badge badge-car">あり</span>{% else %}—{% endif %}
-            </td>
-            <td>{{ member.car_capacity }}</td>
-             <td>
-                <a href="{% url 'edit_member' member.id %}">編集</a>
-                <a href="{% url 'delete_member' member.id %}">削除</a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5" class="empty">まだメンバーが登録されていません</td></tr>
-        {% endfor %}
-    </table>
-</div>
-
-<p class="page-title" style="margin-top:32px;">おでかけ一覧</p>
-<p class="page-sub">作成済みの予定と配車プラン</p>
-
-{% for round in rounds %}
-<div class="card">
-    <div class="card-head">
-        <h3>{{ round.day }}</h3>
-        <a href="{% url 'carshare_result' round.id %}" class="btn btn-accent">配車を計算</a>
-        <a href="{% url 'delete_round' round.id %}" class="btn btn-ghost">削除</a>
+{% if not members or not rounds %}
+{# はじめて使う人向けに、手順そのものを画面に置いておく #}
+<section class="guide reveal" data-delay="70">
+    <div class="guide__head">
+        <p class="guide__title">はじめかた</p>
+        <p class="guide__sub">3ステップで配車が出ます</p>
     </div>
-    <div class="meta">
-        <span>目的地 <strong>{{ round.destination }}</strong></span>
-    </div>
-    <div>
-        {% for member in round.members.all %}
-            <span class="badge">{{ member.name }}</span>
-        {% endfor %}
-    </div>
-</div>
-{% empty %}
-<div class="card"><p class="empty">まだ予定が作成されていません</p></div>
-{% endfor %}
+    {% include 'members/_steps.html' %}
+</section>
+{% else %}
+<details class="howto reveal" data-delay="70">
+    <summary><svg class="icon" aria-hidden="true"><use href="#i-chevron-right"></use></svg>つかいかたを見る</summary>
+    <div class="howto__body">{% include 'members/_steps.html' %}</div>
+</details>
+{% endif %}
 
-<form method="POST" action="{% url 'logout' %}" style="margin-top:28px;">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-ghost">ログアウト</button>
-</form>
+<section class="section reveal" data-delay="90" id="members">
+    <div class="section__head">
+        <h2 class="section__title">メンバー
+            {% if members %}<span class="section__count">{{ members|length }}人</span>{% endif %}
+        </h2>
+        {% if members %}
+        <a href="{% url 'add_member' %}" class="linklike">
+            <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg>追加する
+        </a>
+        {% endif %}
+    </div>
+
+    <div class="card card--flush">
+        <div class="rows">
+            {% for member in members %}
+            <div class="row">
+                <div class="row__avatar {% if member.has_car %}row__avatar--driver{% endif %}">
+                    {% if member.has_car %}
+                        <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+                    {% else %}
+                        {{ member.name|slice:":1" }}
+                    {% endif %}
+                </div>
+                <div class="row__main">
+                    <p class="row__name">
+                        {{ member.name }}
+                        {% if member.has_car %}
+                        <span class="badge badge--car">{{ member.car_capacity }}人乗り</span>
+                        {% endif %}
+                    </p>
+                    <p class="row__sub">
+                        <svg class="icon" aria-hidden="true"><use href="#i-train"></use></svg>{{ member.nearest_station }}
+                    </p>
+                </div>
+                <div class="row__actions">
+                    <a href="{% url 'edit_member' member.id %}" class="iconbtn" title="編集">
+                        <svg class="icon" aria-hidden="true"><use href="#i-edit"></use></svg><span>編集</span>
+                    </a>
+                    <form method="POST" action="{% url 'delete_member' member.id %}"
+                          data-confirm
+                          data-confirm-title="{{ member.name }}さんを削除しますか？"
+                          data-confirm-body="このメンバーが参加しているおでかけからも外れます。">
+                        {% csrf_token %}
+                        <button type="submit" class="iconbtn iconbtn--danger" title="削除">
+                            <svg class="icon" aria-hidden="true"><use href="#i-delete"></use></svg><span>削除</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty">
+                <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+                <p class="empty__title">まだメンバーがいません</p>
+                <p>まずは一緒に行く人を登録しましょう。</p>
+                <a href="{% url 'add_member' %}" class="btn btn--sm" style="margin-top:14px;">
+                    <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg>メンバーを登録する
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="section reveal" data-delay="110" id="rounds">
+    <div class="section__head">
+        <h2 class="section__title">おでかけ
+            {% if rounds %}<span class="section__count">{{ rounds|length }}件</span>{% endif %}
+        </h2>
+        {% if rounds %}
+        <a href="{% url 'add_round' %}" class="linklike">
+            <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg>作成する
+        </a>
+        {% endif %}
+    </div>
+
+    {% for round in rounds %}
+    <article class="card reveal" data-delay="{{ forloop.counter0 }}0">
+        <div class="card__head">
+            <h3 class="card__title">
+                <svg class="icon" aria-hidden="true"><use href="#i-trip"></use></svg>{{ round.destination }}
+            </h3>
+            <div class="card__actions">
+                <a href="{% url 'carshare_result' round.id %}" class="btn btn--accent btn--sm" data-loading>
+                    <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>配車を計算
+                </a>
+                <form method="POST" action="{% url 'delete_round' round.id %}"
+                      data-confirm
+                      data-confirm-title="このおでかけを削除しますか？"
+                      data-confirm-body="{{ round.day|date:'n月j日' }}・{{ round.destination }} の予定と集合時刻が消えます。">
+                    {% csrf_token %}
+                    <button type="submit" class="iconbtn iconbtn--danger" title="削除">
+                        <svg class="icon" aria-hidden="true"><use href="#i-delete"></use></svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+        <div class="card__meta">
+            <span>
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+                {{ round.day|date:"Y年n月j日" }}（{{ round.day|date:"D" }}）
+            </span>
+            <span>参加 {{ round.members.count }}人</span>
+        </div>
+        <div class="badges" style="margin-top:12px;">
+            {% for member in round.members.all %}
+            <span class="badge {% if member.has_car %}badge--car{% else %}badge--plain{% endif %}">
+                {% if member.has_car %}<svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>{% endif %}{{ member.name }}
+            </span>
+            {% endfor %}
+        </div>
+    </article>
+    {% empty %}
+    <div class="card">
+        <div class="empty">
+            <svg class="icon" aria-hidden="true"><use href="#i-trip"></use></svg>
+            <p class="empty__title">まだおでかけがありません</p>
+            <p>日付と行き先、参加する人を決めると配車を計算できます。</p>
+            {% if members %}
+            <a href="{% url 'add_round' %}" class="btn btn--sm" style="margin-top:14px;">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar-edit"></use></svg>おでかけを作成する
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</section>
 
 {% endblock %}

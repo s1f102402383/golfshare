@@ -1,0 +1,45 @@
+{# 登録と編集で同じ入力欄を使う。member が無ければ空のフォームになる。 #}
+<div class="card reveal">
+    <form method="POST" action="{{ form_action }}" id="member-form">
+        {% csrf_token %}
+
+        <div class="field">
+            <label for="name">名前</label>
+            <input type="text" id="name" name="name" value="{{ member.name }}"
+                   placeholder="例）山田 太郎" required autocomplete="off">
+        </div>
+
+        <div class="field">
+            <label for="nearest_station">最寄り駅</label>
+            <p class="field__hint">この駅からの電車の所要時間で配車を決めます。「駅」は付けても付けなくても大丈夫です。</p>
+            <input type="text" id="nearest_station" name="nearest_station" value="{{ member.nearest_station }}"
+                   placeholder="例）赤羽" required autocomplete="off">
+        </div>
+
+        <div class="field">
+            <span class="field__label">車</span>
+            <div class="choices">
+                <label class="choice">
+                    <input type="checkbox" name="has_car" value="true" id="has_car"
+                           {% if member.has_car %}checked{% endif %}>
+                    <span class="choice__box">
+                        <svg class="icon choice__off" aria-hidden="true"><use href="#i-check-box-blank"></use></svg>
+                        <svg class="icon choice__on" aria-hidden="true"><use href="#i-check-box"></use></svg>
+                        この人は車を出せる
+                    </span>
+                </label>
+            </div>
+        </div>
+
+        <div class="field" id="capacity-field" {% if not member.has_car %}hidden{% endif %}>
+            <label for="car_capacity">乗車定員（運転手を含む）</label>
+            <p class="field__hint">車検証の乗車定員をそのまま入れてください。4人乗りなら「4」で、同乗できるのは3人になります。</p>
+            <input type="number" id="car_capacity" name="car_capacity" min="1" max="20"
+                   value="{{ member.car_capacity|default_if_none:'' }}" placeholder="例）5" inputmode="numeric">
+        </div>
+
+        <button type="submit" class="btn btn--block">
+            <svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg>{{ submit_label }}
+        </button>
+    </form>
+</div>

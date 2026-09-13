@@ -1,0 +1,51 @@
+{# ログイン直後に「次に何をすればいいか」が分かるようにするための手順。 #}
+{# members / rounds の有無で、完了・実行中を切り替える。               #}
+<ol class="steps">
+    <li class="step {% if members %}is-done{% else %}is-current{% endif %}">
+        <span class="step__num"><span>1</span><svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg></span>
+        <div class="step__body">
+            <p class="step__title">メンバーを登録する</p>
+            <p class="step__text">
+                一緒に行く人の「名前・最寄り駅・車を出せるか」を登録します。
+                登録するのは最初の1回だけで、次からは選ぶだけです。
+            </p>
+            {% if not members %}
+            <a href="{% url 'add_member' %}" class="btn btn--sm step__action">
+                <svg class="icon" aria-hidden="true"><use href="#i-add"></use></svg>メンバーを登録する
+            </a>
+            {% endif %}
+        </div>
+    </li>
+
+    <li class="step {% if rounds %}is-done{% elif members %}is-current{% endif %}">
+        <span class="step__num"><span>2</span><svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg></span>
+        <div class="step__body">
+            <p class="step__title">おでかけを作成する</p>
+            <p class="step__text">
+                「おでかけ」は、みんなで車移動する予定1回分のことです。
+                日付と行き先を決めて、参加する人にチェックを入れ、運転手の集合時刻を入力します。
+            </p>
+            {% if members and not rounds %}
+            <a href="{% url 'add_round' %}" class="btn btn--sm step__action">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar-edit"></use></svg>おでかけを作成する
+            </a>
+            {% endif %}
+        </div>
+    </li>
+
+    <li class="step {% if rounds %}is-current{% endif %}">
+        <span class="step__num"><span>3</span><svg class="icon" aria-hidden="true"><use href="#i-check-circle"></use></svg></span>
+        <div class="step__body">
+            <p class="step__title">配車を計算する</p>
+            <p class="step__text">
+                おでかけの「配車を計算」を押すと、参加者の最寄り駅から運転手の駅までの電車の所要時間を調べ、
+                全員の合計がいちばん短くなる組み合わせを決めます。
+            </p>
+            {% if rounds %}
+            <a href="#rounds" class="btn btn--sm btn--ghost step__action">
+                おでかけ一覧へ<svg class="icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </a>
+            {% endif %}
+        </div>
+    </li>
+</ol>
