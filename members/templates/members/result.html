@@ -15,17 +15,59 @@
         <span class="badge badge-car">{{ driver.nearest_station }}</span>
     </div>
     <p style="font-size:13px; color:#6b7785; margin-bottom:10px;">同乗するメンバー</p>
-    {% for passenger, minutes, from_time in passengers %}
+    {% for row in passengers %}
         <div style="margin-bottom:6px;">
-            <span class="badge">{{ passenger.name }}</span>
+            <span class="badge">{{ row.passenger.name }}</span>
             <span style="font-size:13px; color:#6b7785;">
-                {{ passenger.nearest_station }}発 {{ from_time|slice:"11:16" }}　所要{{ minutes }}分
+                {% if row.departure_ok %}
+                    {{ row.passenger.nearest_station }}発 {{ row.from_time|slice:"11:16" }}　所要{{ row.minutes }}分
+                {% else %}
+                    {{ row.passenger.nearest_station }}発　所要{{ row.minutes }}分
+                {% endif %}
             </span>
+            {% if not row.departure_ok %}
+                <div style="font-size:12px; color:#c0392b; margin-top:2px;">
+                    ⚠ {{ row.departure_note }}
+                </div>
+            {% endif %}
         </div>
     {% empty %}
         <p class="empty">同乗者なし</p>
     {% endfor %}
 </div>
 {% endfor %}
+
+{% if unassigned %}
+<div class="card">
+    <div class="card-head">
+        <h3>割り当てできなかったメンバー</h3>
+    </div>
+    {% for passenger in unassigned %}
+        <div style="margin-bottom:6px;">
+            <span class="badge">{{ passenger.name }}</span>
+            <span style="font-size:13px; color:#6b7785;">{{ passenger.nearest_station }}</span>
+        </div>
+    {% endfor %}
+    <p style="font-size:12px; color:#6b7785; margin-top:8px;">
+        座席が足りないか、公共交通機関での経路が見つかりませんでした。
+    </p>
+</div>
+{% endif %}
+
+{% if drivers_without_plan %}
+<div class="card">
+    <div class="card-head">
+        <h3>集合時刻が未設定の運転手</h3>
+    </div>
+    {% for driver in drivers_without_plan %}
+        <div style="margin-bottom:6px;">
+            <span class="badge badge-car">{{ driver.name }}</span>
+        </div>
+    {% endfor %}
+    <p style="font-size:12px; color:#6b7785; margin-top:8px;">
+        集合時刻を設定すると割り当ての候補に入ります。
+    </p>
+</div>
+{% endif %}
 
 {% endblock %}
