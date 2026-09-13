@@ -1,9 +1,37 @@
+# Render Blueprint。
+#
+# 重要: このファイルは Blueprint として作成されたサービスでしか読まれない。
+# ダッシュボードで手作りしたサービスは env とビルド設定を画面側で持つため、
+# ここに何を書いても無視される（実際、PYTHON_VERSION を 3.11.0 と書いていたのに
+# Render 既定の 3.14 でビルドされていた）。
+#
+# データベースは Render の無料 Postgres を使わない。30日で suspend され、
+# ホスト名ごと DNS から消えてビルドもアプリも落ちるため。
+# 外部の Postgres(Neon / Supabase など)の接続文字列を DATABASE_URL に入れる。
+
 services:
   - type: web
     name: golfshare
     runtime: python
+    plan: free
+    region: oregon
+    branch: main
     buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate
     startCommand: gunicorn golfshare.wsgi:application
     envVars:
+      # Render は runtime.txt を読まない。バージョンはここが正。
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: "3.11.9"
+      - key: DEBUG
+        value: "False"
+      # Render がランダムな値を自動生成し、以後そのサービスで使い回す。
+      # 手で値を入力する必要はない。
+      - key: SECRET_KEY
+        generateValue: true
+      # 以下は値をリポジトリに置かず、Render のダッシュボードで入力する。
+      # DATABASE_URL: 外部 Postgres の接続文字列（sslmode=require 付き）
+      - key: DATABASE_URL
+        sync: false
+      # RAPIDAPI_KEY: NAVITIME(RapidAPI)のキー。.env は .gitignore 対象のため。
+      - key: RAPIDAPI_KEY
+        sync: false

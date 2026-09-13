@@ -3,7 +3,7 @@
 # scipy は割り当てアルゴリズムの比較(ハンガリアン法 vs 整数計画)にのみ使う。
 # 本番の割り当ては PuLP で行うため、150MB 超の numpy/scipy をデプロイに含めない。
 #
-# バージョンは runtime.txt の Python 3.11 で動くものに固定している
+# バージョンは render.yaml の PYTHON_VERSION (3.11) で動くものに固定している
 # （numpy 2.5 / scipy 1.18 は Python 3.12 以上を要求するため使えない）。
 -r requirements.txt
 
